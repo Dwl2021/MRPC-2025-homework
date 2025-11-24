@@ -1,141 +1,200 @@
 <launch>
 
-  <arg name="map_size_x" default="30.0"/>
-  <arg name="map_size_y" default="30.0"/>
-  <arg name="map_size_z" default="4.0"/>
+  <!-- ========== 基本参数 ========== -->
+  <arg name="map_size_x"      default="30.0"/>
+  <arg name="map_size_y"      default="30.0"/>
+  <arg name="map_size_z"      default="4.0"/>
   <arg name="map_frame_name"  default="world"/>
 
-  <arg name="start_x" default=" -15.0"/>
-  <arg name="start_y" default=" 1.0"/>
-  <arg name="start_z" default=" 2.0"/>
+  <arg name="start_x" default="-15.0"/>
+  <arg name="start_y" default="1.0"/>
+  <arg name="start_z" default="2.0"/>
 
-  <arg name="sensing_horizon"  default="5.0" />
-  <arg name="sensing_rate"     default="30.0"/>
-  <arg name="estimation_rate"  default="30.0"/>
+  <arg name="sensing_horizon" default="5.0"/>
+  <arg name="sensing_rate"    default="30.0"/>
+  <arg name="estimation_rate" default="30.0"/>
 
-  <!-- Trajectory Optimization -->
-  <node pkg="trajectory_generator" type="trajectory_generator_node" name="trajectory_generator_node" output="screen" required="true">
+  <!-- ========== Trajectory Optimization 节点 ========== -->
+  <node pkg="trajectory_generator"
+        type="trajectory_generator_node"
+        name="trajectory_generator_node"
+        output="screen"
+        required="true">
+
+    <!-- 订阅 waypoints / local_pointcloud / odom -->
     <remap from="~waypoints"        to="/waypoint_generator/waypoints"/>
-    <remap from="~local_pointcloud" to="/pcl_render_node/local_pointcloud"/> 
+    <remap from="~local_pointcloud" to="/pcl_render_node/local_pointcloud"/>
     <remap from="~odom"             to="/visual_slam/odom"/>
-    
-    <param name="planning/vel"                value="3.0"  />
-    <param name="planning/acc"                value="2.0"  />
-    <param name="planning/dev_order"          value="3"    />
-    <param name="planning/min_order"          value="3"    />
-    <param name="vis/vis_traj_width"          value="0.07" />
-    <param name="map/margin"                  value="0.0" />
-    <param name="map/resolution"              value="0.2" />
-    <param name="map/x_size"                  value="$(arg map_size_x)"/>
-    <param name="map/y_size"                  value="$(arg map_size_y)"/>
-    <param name="map/z_size"                  value="$(arg map_size_z)"/>
+
+    <!-- 轨迹规划参数 -->
+    <param name="planning/vel"       value="3.0"/>
+    <param name="planning/acc"       value="2.0"/>
+    <param name="planning/dev_order" value="3"/>
+    <param name="planning/min_order" value="3"/>
+
+    <!-- 可视化与地图参数 -->
+    <param name="vis/vis_traj_width" value="0.07"/>
+    <param name="map/margin"         value="0.0"/>
+    <param name="map/resolution"     value="0.2"/>
+    <param name="map/x_size"         value="$(arg map_size_x)"/>
+    <param name="map/y_size"         value="$(arg map_size_y)"/>
+    <param name="map/z_size"         value="$(arg map_size_z)"/>
+
+    <!-- 重规划参数 -->
     <param name="replanning/thresh_replan"    value="1.5" type="double"/>
     <param name="replanning/thresh_no_replan" value="2.0" type="double"/>
-    <param name="path/resolution"             value="0.2"/>
-    <param name="planning/demox"              value="0"  />
+
+    <!-- A* 路径简化分辨率 -->
+    <param name="path/resolution" value="0.2"/>
+
+    <!-- 作业里 demox 标志 -->
+    <param name="planning/demox" value="0"/>
   </node>
 
-  <!-- Trajectory Command server（保留，用于可视化等，不再直接驱动控制器） -->
-  <node pkg="traj_server" type="traj_server_node" name="traj_server" output="screen" launch-prefix="">
+  <!-- ========== Trajectory Command Server ========== -->
+  <!-- 订阅：~odometry  / ~trajectory
+       发布：PositionCommand 到 /traj_server/position_command -->
+  <node pkg="traj_server"
+        type="traj_server_node"
+        name="traj_server"
+        output="screen">
+
     <remap from="~/odometry"   to="/visual_slam/odom"/>
     <remap from="~/trajectory" to="/trajectory_generator_node/trajectory"/>
+
+    <!-- 这里内部会发布 /traj_server/position_command，
+         再由 so3_control 通过 ~position_cmd remap 订阅 -->
   </node>
 
-  <!-- Random Map Generator -->
-  <node pkg="map_generator" name="random_complex" type="random_complex" output="screen">    
-    <remap from="~odometry"       to="/visual_slam/odom"/>
+  <!-- ========== 随机障碍地图 ========== -->
+  <node pkg="map_generator"
+        name="random_complex"
+        type="random_complex"
+        output="screen">
 
-    <param name="init_state_x"        value="$(arg start_x)"/>
-    <param name="init_state_y"        value="$(arg start_y)"/>
+    <remap from="~odometry" to="/visual_slam/odom"/>
 
-    <param name="map/x_size"          value="$(arg map_size_x)" />
-    <param name="map/y_size"          value="$(arg map_size_y)" />
-    <param name="map/z_size"          value="$(arg map_size_z)" />
-    <param name="map_frame_name"      value="$(arg map_frame_name)"/>
+    <param name="init_state_x" value="$(arg start_x)"/>
+    <param name="init_state_y" value="$(arg start_y)"/>
 
-    <param name="map/circle_num" value="0"/>        
-    <param name="map/obs_num"    value="150"/>        
-    <param name="map/resolution" value="0.1"/>     
+    <param name="map/x_size"     value="$(arg map_size_x)"/>
+    <param name="map/y_size"     value="$(arg map_size_y)"/>
+    <param name="map/z_size"     value="$(arg map_size_z)"/>
+    <param name="map_frame_name" value="$(arg map_frame_name)"/>
 
-    <param name="ObstacleShape/lower_rad" value="0.1"/>
-    <param name="ObstacleShape/upper_rad" value="0.7"/>
-    <param name="ObstacleShape/lower_hei" value="1.0"/>
-    <param name="ObstacleShape/upper_hei" value="2.5"/>
-    <param name="CircleShape/lower_circle_rad"   value="0.6"/>        
-    <param name="CircleShape/upper_circle_rad"   value="3.5"/>
-    <param name="ObstacleShape/choice" value="0"/>        
-    
-    <param name="sensing/rate"   value="3.0"/>        
+    <param name="map/circle_num" value="0"/>
+    <param name="map/obs_num"    value="150"/>
+    <param name="map/resolution" value="0.1"/>
+
+    <param name="ObstacleShape/lower_rad"    value="0.1"/>
+    <param name="ObstacleShape/upper_rad"    value="0.7"/>
+    <param name="ObstacleShape/lower_hei"    value="1.0"/>
+    <param name="ObstacleShape/upper_hei"    value="2.5"/>
+    <param name="CircleShape/lower_circle_rad" value="0.6"/>
+    <param name="CircleShape/upper_circle_rad" value="3.5"/>
+    <param name="ObstacleShape/choice"       value="0"/>
+
+    <param name="sensing/rate" value="3.0"/>
   </node>
 
-  <!-- Map Info Render -->
-  <node pkg="map_render" type="pcl_render_node" name="pcl_render_node" output="screen">
-    <param name="sensing_horizon"   value="$(arg sensing_horizon)" />
-    <param name="sensing_rate"      value="$(arg sensing_rate)"/>
-    <param name="estimation_rate"   value="$(arg estimation_rate)"/>
-    <param name="map/x_size"        value="$(arg map_size_x)"/>
-    <param name="map/y_size"        value="$(arg map_size_y)"/>
-    <param name="map/z_size"        value="$(arg map_size_z)"/>
-    <param name="map_frame_name"    value="$(arg map_frame_name)"/>
+  <!-- ========== 点云渲染 / 局部地图 ========== -->
+  <node pkg="map_render"
+        type="pcl_render_node"
+        name="pcl_render_node"
+        output="screen">
 
-    <remap from="~global_map"       to="/random_complex/global_map"/>
-    <remap from="~global_ground"    to="/random_complex/global_ground"/>
-    <remap from="~local_map"        to="/click_obstacle_generation/click_new_obs"/>
-    <remap from="~odometry"         to="/visual_slam/odom"/>
+    <param name="sensing_horizon" value="$(arg sensing_horizon)"/>
+    <param name="sensing_rate"    value="$(arg sensing_rate)"/>
+    <param name="estimation_rate" value="$(arg estimation_rate)"/>
+    <param name="map/x_size"      value="$(arg map_size_x)"/>
+    <param name="map/y_size"      value="$(arg map_size_y)"/>
+    <param name="map/z_size"      value="$(arg map_size_z)"/>
+    <param name="map_frame_name"  value="$(arg map_frame_name)"/>
+
+    <remap from="~global_map"    to="/random_complex/global_map"/>
+    <remap from="~global_ground" to="/random_complex/global_ground"/>
+    <remap from="~local_map"     to="/click_obstacle_generation/click_new_obs"/>
+    <remap from="~odometry"      to="/visual_slam/odom"/>
   </node>
 
-  <!-- Quadrotor Simulator -->
-  <node pkg="so3_quadrotor_simulator" type="quadrotor_simulator_so3" name="quadrotor_simulator_so3" output="screen">
+  <!-- ========== 四旋翼仿真器（接收 SO3Command，输出 odom/imu） ========== -->
+  <!-- quadrotor_simulator_so3 订阅 ~cmd（SO3Command），通过 getControl() 计算电机转速并积分动力学  -->
+  <node pkg="so3_quadrotor_simulator"
+        type="quadrotor_simulator_so3"
+        name="quadrotor_simulator_so3"
+        output="screen">
+
     <param name="rate/odom" value="100.0"/>
 
     <param name="simulator/init_state_x" value="$(arg start_x)"/>
     <param name="simulator/init_state_y" value="$(arg start_y)"/>
     <param name="simulator/init_state_z" value="$(arg start_z)"/>
+
+    <!-- 发布的 ~odom / ~imu 统一到 /visual_slam/odom / sim/imu -->
     <remap from="~odom" to="/visual_slam/odom"/>
     <remap from="~cmd"  to="so3_cmd"/>
-    <remap from="~imu"  to="sim/imu"/>     
+    <remap from="~imu"  to="sim/imu"/>
   </node>
- 
-  <!-- Quadrotor Controller -->  
-  <node pkg="nodelet" type="nodelet" args="standalone so3_control/SO3ControlNodelet" name="so3_control" required="true" output="screen">
-    <remap from="~odom"          to="/visual_slam/odom"/>
-    <!-- ******** 关键修改：控制器直接吃 /position_cmd ******** -->
-    <remap from="~position_cmd"  to="/position_cmd"/>
-    <!-- ********************************************** -->
-    <remap from="~motors"        to="motors"/>
-    <remap from="~corrections"   to="corrections"/>
-    <remap from="~so3_cmd"       to="so3_cmd"/>
-    <remap from="~imu"           to="sim/imu"/>
 
+  <!-- ========== SO3 控制器 Nodelet（位置控制 -> SO3Command） ========== -->
+  <!-- 源码里订阅的是 private "odom" / "position_cmd" / "motors" / "corrections" / "imu"，
+       发布 private "so3_cmd"。 -->
+  <node pkg="nodelet"
+        type="nodelet"
+        args="standalone so3_control/SO3ControlNodelet"
+        name="so3_control"
+        required="true"
+        output="screen">
+
+    <!-- 里程计、位姿指令、IMU 等 remap 到全局话题 -->
+    <remap from="~odom"         to="/visual_slam/odom"/>
+    <remap from="~position_cmd" to="/traj_server/position_command"/>
+    <remap from="~motors"       to="motors"/>
+    <remap from="~corrections"  to="corrections"/>
+    <remap from="~so3_cmd"      to="so3_cmd"/>
+    <remap from="~imu"          to="sim/imu"/>
+
+    <!-- 增益、修正参数（注意去掉原始 launch 中多余的空格，确保能正确被读取） -->
     <rosparam file="$(find so3_control)/config/gains_hummingbird.yaml"/>
     <rosparam file="$(find so3_control)/config/corrections_hummingbird.yaml"/>
-    <param name="mass"                   value="0.98"/>
-    <param name="use_angle_corrections " value="false"/>
-    <param name="use_external_yaw "      value="false"/>
-    <param name="gains/rot/z"            value="1.0"/>    
-    <param name="gains/ang/z"            value="0.1"/>        
-  </node> 
- 
-  <!-- Odom Visualization -->
-  <node pkg="odom_visualization" name="odom_visualization" type="odom_visualization" output="screen">
-    <remap from="~odom"            to="/visual_slam/odom"/>
-    <param name="color/a"          value="0.8"/>    
-    <param name="color/r"          value="2.0"/>        
-    <param name="color/g"          value="0.0"/>        
-    <param name="color/b"          value="1.0"/>       
+
+    <param name="mass"               value="0.98"/>
+    <param name="use_angle_corrections" value="false"/>
+    <param name="use_external_yaw"      value="false"/>
+    <param name="gains/rot/z"        value="1.0"/>
+    <param name="gains/ang/z"        value="0.1"/>
+  </node>
+
+  <!-- ========== 里程计可视化 ========== -->
+  <node pkg="odom_visualization"
+        name="odom_visualization"
+        type="odom_visualization"
+        output="screen">
+
+    <remap from="~odom" to="/visual_slam/odom"/>
+
+    <param name="color/a"          value="0.8"/>
+    <param name="color/r"          value="2.0"/>
+    <param name="color/g"          value="0.0"/>
+    <param name="color/b"          value="1.0"/>
     <param name="covariance_scale" value="100.0"/>
-    <param name="drone_scale"      value="0.8"/>       
+    <param name="drone_scale"      value="0.8"/>
   </node>
 
-  <!-- Set the goal -->
-  <node pkg="waypoint_generator" name="waypoint_generator" type="waypoint_generator" output="screen">
-    <remap from="~goal"           to="/goal"/>
-    <param name="waypoint_type"   value="manual-lonely-waypoint"/>    
+  <!-- ========== 手动设置导航目标（waypoint_generator） ========== -->
+  <node pkg="waypoint_generator"
+        name="waypoint_generator"
+        type="waypoint_generator"
+        output="screen">
+
+    <remap from="~goal"         to="/goal"/>
+    <param name="waypoint_type" value="manual-lonely-waypoint"/>
   </node>
 
-  <!-- Start rviz -->
-  <node name="rviz" pkg="rviz" type="rviz" output="screen"
-        args="-d $(find trajectory_generator)/launch/rviz_config/demo.rviz"> 
-  </node>
-
+  <!-- ========== RViz ========== -->
+  <node name="rviz"
+        pkg="rviz"
+        type="rviz"
+        output="screen"
+        args="-d $(find trajectory_generator)/launch/rviz_config/demo.rviz"/>
 </launch>
