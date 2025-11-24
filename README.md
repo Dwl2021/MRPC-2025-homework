@@ -34,7 +34,7 @@
   - `df_quaternion.csv`（若选做 `documents/homework.pdf` 题目 3）
 - 仓库内的 `code` 部分需要同步更新，保证所有脚本与包能按 `code/README.md` 中的要求顺利运行。
 - 如果选做 `documents/homework.pdf` 题目 3，则还需要包含 `quadrotor_df` 的 ROS 可执行包。
-- 作业的最终截止2026年1月18日23:59，迟交一天扣10%，扣完即止。
+- 提交日期将由企业微信群另行通知，请关注群内公告，最终截止时间以通知为准。
 
 **完成上述内容后，再打包提交。**
 
