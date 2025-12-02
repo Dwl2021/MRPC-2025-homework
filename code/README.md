@@ -4,11 +4,16 @@
 
 ## 统一评分细则与报告要求（代码部分）
 
+**评分细则：**
+
 - 依据本文件“任务一”部分补全代码并顺利编译运行，可获得 **30 分**。
-- 继续完成任务二、任务三并调好控制器后，将根据轨迹跟踪正确性、稳定性和整体效果再给 **1–29 分**；完成任务三后请导出飞行视频 `solutions/video.mp4`。
+- 继续完成任务二、任务三并调好控制器后，将根据轨迹跟踪正确性、稳定性和整体效果再给 **1–40 分**；完成任务三后请自行录制飞行视频 `solutions/video.mp4`，同时运行`code/calculate_results.py`会保存结果文件到`solutions/result.txt`。
 - 若完成任务四中的附加题或进行其他有效改进，可依据工作量、效果与新颖性额外获得 **1–10 分**。
 
-完成任务三后需将飞行视频保存为 `video.mp4`，并把 `code/calculate_results.py` 的终端输出（包含最终 RMSE、轨迹运行时间、总长度、碰撞状态与综合得分等指标）贴到报告中；如有任务四的附加改进，同样在报告中说明并且进行必要的对比实验。报告必须导出为 `report.pdf`，并且放置在`solutions/`路径下。
+**报告要求：**
+
+- 请把 `code/calculate_results.py` 的终端输出（包含最终 RMSE、轨迹运行时间、总长度、碰撞状态与综合得分等指标）贴到报告中，并且进行必要的分析；
+- 如有任务四的附加改进，同样在报告中说明并且进行必要的对比实验。报告必须导出为 `report.pdf`，并且放置在`solutions/`路径下。
 
 ## 1. 运行环境安装
 
@@ -141,7 +146,7 @@ git clone https://github.com/Dwl2021/MRPC-2025-homework.git
 
 ### 3.1 任务一：补全四旋翼飞机的动力学模型
 
-在 `MRPC-2025-homework/src/uav_simulator/so3_quadrotor_simulator/src/dynamics/Quadrotor.cpp` 中描述了四旋翼的动力学模型，请阅读代码 `Quadrotor.cpp`，补充四旋翼的动力学模型：
+在 `MRPC-2025-homework/code/src/uav_simulator/so3_quadrotor_simulator/src/dynamics/Quadrotor.cpp` 中描述了四旋翼的动力学模型，请阅读代码 `Quadrotor.cpp`，补充四旋翼的动力学模型：
 
 ```cpp
 x_dot = cur_state.v;
@@ -201,7 +206,7 @@ roslaunch trajectory_generator test_control.launch
 
 ### 3.2 任务二：补充无人机的前端规划模块
 
-在 `MRPC-2025-homework/src/planner/path_searching/src/kinodynamic_astar.cpp` 中补充完有关于 A* 的相关内容，共有 4 个 `STEP` 需要你补齐。
+在 `MRPC-2025-homework/code/src/planner/path_searching/src/kinodynamic_astar.cpp` 中补充完有关于 A* 的相关内容，共有 4 个 `STEP` 需要你补齐。
 
 #### STEP 1.1：补全启发式函数
 
@@ -328,7 +333,7 @@ roslaunch trajectory_generator demo.launch
 
 在上面所有的代码都补齐之后，你应该可以编译成功并且进行测试了，但是你会发现飞机对于轨迹的跟踪并不是很好，那么你需要对控制器的参数进行调整。
 
-请阅读 `MRPC-2025-homework/src/uav_simulator/so3_control/src/so3_control_nodelet.cpp` 中的控制器代码，并且对 `position_cmd_callback` 函数中的 `kx_` 和 `kv_` 参数进行调整。
+请阅读 `MRPC-2025-homework/code/src/uav_simulator/so3_control/src/so3_control_nodelet.cpp` 中的控制器代码，并且对 `position_cmd_callback` 函数中的 `kx_` 和 `kv_` 参数进行调整。
 
 ```cpp
 void SO3ControlNodelet::position_cmd_callback(
@@ -370,7 +375,7 @@ python3 calculate_results.py
 综合评价得分为(综合分数越低越好): 1.3102676466588432
 ```
 
-**提交方式** ：任务三运行成功之后，录制一个运行视频命名为`video.mp4`并且放置到`solutions/`路径下，同时把最终得到的RMSE，轨迹运行时间等指标贴到报告中，并且进行必要的分析，包括但不限于调参思路和技巧，简洁为主。
+**提交方式** ：任务三运行成功之后，录制一个运行视频命名为`video.mp4`并且放置到`solutions/`路径下，同时运行`code/calculate_results.py`后会生成`solutions/result.txt`结果文件，然后把终端得到的RMSE，轨迹运行时间等指标贴到报告中，并且进行必要的分析，包括但不限于调参思路和技巧，简洁为主。
 
 ### 3.4 任务四：附加题（Optional）
 
@@ -388,4 +393,5 @@ python3 calculate_results.py
 1. 在 `solutions` 目录下保留三类最终材料：
    - `report.pdf`：需要包含上述所提到的必要的思路分析以及实验结果，以及如果选做了附加题则需要简洁清晰地描述附加题的改进方案。
    - `video.mp4`：任务三完成后的无人机飞行视频（录屏）。
+   - `result.txt`：任务三完成以后的结果文件。
 2. 确保 `code/` 目录内的 ROS 包均可按本 README 的步骤编译、运行。

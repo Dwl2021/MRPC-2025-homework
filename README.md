@@ -25,12 +25,13 @@
   - 共享代码或参考他人代码实现。
 
 ## 提交方式
-
+- 完成之后请运行`bash check_completeness.sh`检查提交的完整性。
 - 把最终文件夹 `MRPC-2025-homework/` 压缩为 zip，命名为 `姓名-学号.zip`（如 `张三-23123456.zip`），发送到 `SYSU_HILAB_Course@163.com`。
 - 报告务必导出为 PDF，文件名固定为 `report.pdf`，放在仓库根目录下的 `solutions` 文件夹内。
 - 在 `solutions` 目录下同时保留以下文件：
   - `report.pdf`（必须）
   - `video.mp4`（任务三飞行视频，必须）
+  - `result.txt` (任务三运行`calculate_results.py`后生成的txt文件，必须)
   - `df_quaternion.csv`（若选做 `documents/homework.pdf` 题目 3）
 - 仓库内的 `code` 部分需要同步更新，保证所有脚本与包能按 `code/README.md` 中的要求顺利运行。
 - 如果选做 `documents/homework.pdf` 题目 3，则还需要包含 `quadrotor_df` 的 ROS 可执行包。

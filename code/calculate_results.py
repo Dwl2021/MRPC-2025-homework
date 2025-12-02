@@ -1,6 +1,5 @@
 import numpy as np
-
-
+import os
 def calculate_rmse_and_more():
     des_pos_data = []
     pos_data = []
@@ -54,14 +53,12 @@ def calculate_rmse_and_more():
     # 计算总轨迹长度
     total_length = np.sum(length_increments_array)
 
+    # 检查是否发生了碰撞
     additional_score = check_additional_file()
 
-    # 简单综合评价得分（这里只是将三个指标相加，可根据需求调整权重等）
-    overall_score = rmse + 5*1/total_time + 3*1/total_length+additional_score
-
-    return rmse, total_time, total_length, additional_score,overall_score
-
-
+    overall_score = 200. * rmse + 1./5. * total_time + 1./5. * total_length + 10. * additional_score
+    
+    return rmse, total_time, total_length, additional_score, overall_score
 def check_additional_file():
     file_path = "/home/stuwork/MRPC-2025-homework/code/src/quadrotor_simulator/so3_control/src/issafe.txt"  # 替换为实际的文件路径
     try:
@@ -75,11 +72,15 @@ def check_additional_file():
 
 if __name__ == "__main__":
     try:
-        rmse, total_time, total_length,additional_score,overall_score = calculate_rmse_and_more()
+        rmse, total_time, total_length, additional_score, overall_score = calculate_rmse_and_more()
         print(f"计算得到的均方根误差（RMSE）值为: {rmse}")
         print(f"轨迹运行总时间为: {total_time}")
         print(f"总轨迹长度为: {total_length}")
         print(f"是否发生了碰撞: {additional_score}")
         print(f"综合评价得分为(综合分数越低越好): {overall_score}")
+        
+        result_file_path = "/home/stuwork/MRPC-2025-homework/solutions/result.txt"
+        with open(result_file_path, "w") as f:
+            f.write(f"{rmse} {total_time} {total_length} {additional_score} {overall_score}")
     except ValueError as e:
         print(f"发生错误: {e}")
