@@ -169,7 +169,19 @@ void Quadrotor::operator()(const Quadrotor::InternalState& x,
   //! @todo implement
   Eigen::Array4d blade_linear_velocity;
   Eigen::Array4d motor_linear_velocity;
-  Eigen::Array4d AOA;   //攻角的计算
+  Eigen::Array4d AOA; // 攻角 (Angle of Attack)
+
+  // 1047... 是从 RPM 转为 rad/s 的系数 (2*pi/60)
+  blade_linear_velocity = 0.104719755 * cur_state.motor_rpm.array() * prop_radius_;
+  
+  // 机体 $z$ 轴方向的速度（即垂直进入螺旋桨平面的速度）
+  double v_z = (R.transpose() * cur_state.v)(2); 
+
+  for (int i = 0; i < 4; ++i) {
+    motor_linear_velocity[i] = v_z; 
+    // 计算有效攻角：初始安装角 alpha0 减去由于进气产生的诱导角
+    AOA[i] = alpha0 - atan2(motor_linear_velocity[i], blade_linear_velocity[i]) * 180 / 3.14159265;
+  }
   blade_linear_velocity = 0.104719755 * cur_state.motor_rpm.array() * prop_radius_;
   for (int i = 0; i < 4; ++i){
     AOA[i]   = alpha0 - atan2(motor_linear_velocity[i], blade_linear_velocity[i]) * 180 / 3.14159265;
@@ -195,16 +207,13 @@ void Quadrotor::operator()(const Quadrotor::InternalState& x,
   {
     vnorm.normalize();
   }
-
-  x_dot = cur_state.v;
-  //请在这里补充完四旋翼飞机的动力学模型，提示：v_dot应该与重力，总推力，外力和空气阻力相关
-  // v_dot = //?????
-
-  acc_ = v_dot;
-
-  R_dot = R * omega_vee;
-  //请在这里补充完四旋翼飞机的动力学模型，角速度导数的计算涉及到惯性矩阵J_的逆、力矩、科里奥利力（通过角速度与惯性矩阵和角速度的叉积来计算）和外部力矩等因素。
-  // omega_dot = //??????
+ Eigen::Vector3d gravity_vec(0, 0, -g_); 
+Eigen::Vector3d thrust_body(0, 0, thrust); 
+x_dot = cur_state.v;
+v_dot = gravity_vec + (R * thrust_body + external_force_ - resistance * vnorm) / mass_;
+omega_dot = J_.inverse() * (moments + external_moment_ - cur_state.omega.cross(J_ * cur_state.omega));
+R_dot = R * omega_vee;
+	
 
   motor_rpm_dot = (input_ - cur_state.motor_rpm) / motor_time_constant_;
 

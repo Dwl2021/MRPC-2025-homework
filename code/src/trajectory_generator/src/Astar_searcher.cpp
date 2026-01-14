@@ -199,15 +199,28 @@ inline void Astarpath::AstarGetSucc(MappingNodePtr currentPtr,
   }
 }
 
-double Astarpath::getHeu(MappingNodePtr node1, MappingNodePtr node2) {
-  
-  // 使用数字距离和一种类型的tie_breaker
-  double heu;
-  double tie_breaker;
-  
-  return heu;
-}
+  double Astarpath::getHeu(MappingNodePtr node1, MappingNodePtr node2) {
+    double dx = std::abs(node1->coord(0) - node2->coord(0));
+    double dy = std::abs(node1->coord(1) - node2->coord(1));
+    double dz = std::abs(node1->coord(2) - node2->coord(2));
 
+    // --- 优化 A: 26邻域对角线距离
+    double min_xyz = std::min({dx, dy, dz});
+    double max_xyz = std::max({dx, dy, dz});
+    double mid_xyz = dx + dy + dz - min_xyz - max_xyz;
+
+    // 26邻域下，最简化的启发式是直接取最大轴向距离（Chebyshev 距离的变形）
+    // 或者使用精确的对角线系数：1, 1.414(sqrt2), 1.732(sqrt3)
+    double heu = (1.732 - 1.414) * min_xyz + (1.414 - 1.0) * mid_xyz + 1.0 * max_xyz;
+
+    // --- 优化 B: 动态 Tie-breaker (解决转折多、搜索慢的问题) ---
+    // 计算当前点到“起点-终点”直线的叉积偏置
+    // 假设 start_coord 是搜索起始点的坐标，我们可以通过传入或存储它来增加指向性
+    // 如果不方便获取起点，可以调大你现有的 tie_breaker 系数
+    double p_tie_breaker = 1.0 + 0.005; // 稍微从 0.0001 调大到 0.005
+    
+    return p_tie_breaker * heu;
+}
 
 bool Astarpath::AstarSearch(Vector3d start_pt, Vector3d end_pt) {
   ros::Time time_1 = ros::Time::now();
@@ -239,6 +252,9 @@ bool Astarpath::AstarSearch(Vector3d start_pt, Vector3d end_pt) {
    * STEP 1.1:  完成 Astarpath::getHeu
    *
    * **/
+
+
+
   startPtr->f_score = getHeu(startPtr, endPtr);
 
   
@@ -260,36 +276,64 @@ bool Astarpath::AstarSearch(Vector3d start_pt, Vector3d end_pt) {
    * **/
 
   while (!Openset.empty()) {
-    //1.弹出g+h最小的节点
-    //????
-    //2.判断是否是终点
-    //????
-    //3.拓展当前节点
-    //????
-    for(unsigned int i=0;i<neighborPtrSets.size();i++)
-    {
-      
-      if(neighborPtrSets[i]->id==-1)
-      {
-         continue;
-      }
-      tentative_g_score=currentPtr->g_score+edgeCostSets[i];
-      neighborPtr=neighborPtrSets[i];
-      if(isOccupied(neighborPtr->index))
-      continue;
-      if(neighborPtr->id==0)
-      {
-        //4.填写信息，完成更新
-        //???
-        continue;
-      }
-      else if(neighborPtr->id==1)
-      {
-        //???
-      continue;
-      }
+    currentPtr = Openset.begin()->second;
+    Openset.erase(Openset.begin());
+    currentPtr->id = -1; 
+
+    if(currentPtr->index == end_idx) { 
+        terminatePtr = currentPtr;
+        return true;
     }
-  }
+
+    AstarGetSucc(currentPtr, neighborPtrSets, edgeCostSets);
+
+    for(unsigned int i=0; i < neighborPtrSets.size(); i++) {
+        neighborPtr = neighborPtrSets[i];
+        if(neighborPtr->id == -1 || isOccupied(neighborPtr->index)) continue;
+
+        // 1. 转向惩罚
+        double turn_penalty = 0.0;
+        if (currentPtr->Father != NULL) {
+            Eigen::Vector3i dir_last = currentPtr->index - currentPtr->Father->index;
+            Eigen::Vector3i dir_now = neighborPtr->index - currentPtr->index;
+            if (dir_last != dir_now) {
+                turn_penalty = 4.0; 
+            }
+        }
+
+        double safety_margin_cost = 0.0;
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                if (isOccupied(neighborPtr->index + Eigen::Vector3i(dx, dy, 0))) {
+                    safety_margin_cost = 2.0;
+                    break;
+                }
+            }
+        }
+
+        double tentative_g_score = currentPtr->g_score + edgeCostSets[i] + turn_penalty + safety_margin_cost;
+
+        if(neighborPtr->id <= 0 || tentative_g_score < neighborPtr->g_score) {
+            // 如果已经在 Openset 中，更新它
+            if (neighborPtr->id == 1) {
+                auto range = Openset.equal_range(neighborPtr->f_score);
+                for (auto it = range.first; it != range.second; ++it) {
+                    if (it->second == neighborPtr) {
+                        Openset.erase(it);
+                        break;
+                    }
+                }
+            }
+
+            neighborPtr->g_score = tentative_g_score;
+            neighborPtr->Father = currentPtr;
+            // 3. Tie-breaker：增加目标指向性
+            neighborPtr->f_score = tentative_g_score + (1.0 + 0.001) * getHeu(neighborPtr, endPtr);
+            neighborPtr->id = 1;
+            Openset.insert(std::make_pair(neighborPtr->f_score, neighborPtr));
+        }
+    }
+}
 
   ros::Time time_2 = ros::Time::now();
   if ((time_2 - time_1).toSec() > 0.1)
@@ -315,6 +359,10 @@ terminatePtr=terminatePtr->Father;
    * **/
 
   // ???
+  front_path.push_back(terminatePtr);
+  for (int i = front_path.size() - 1; i >= 0; i--) {
+    path.push_back(front_path[i]->coord);
+  }
 
   return path;
 }
